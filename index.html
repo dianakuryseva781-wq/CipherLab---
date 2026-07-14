@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CipherLab — Лаборатория Шифрования | Демо-версия</title>
+    <meta name="description" content="CipherLab — обучающая игра по криптографии. Расшифровывайте секретные сообщения, изучайте шифры.">
+    <meta name="theme-color" content="#0a0d14">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%2300e05a'/%3E%3Cstop offset='100%25' style='stop-color:%2300c8ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='20' fill='%230a0d14'/%3E%3Ctext x='50' y='65' text-anchor='middle' font-size='45' fill='url(%23g)'%3E🔐%3C/text%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #06060d; --bg-secondary: #0a0d14; --bg-tertiary: #111620;
+            --bg-card: #161c28; --bg-input: #0d1119;
+            --green: #00e05a; --green-dim: rgba(0,224,90,0.12); --green-glow: rgba(0,224,90,0.5);
+            --cyan: #00c8ff; --cyan-dim: rgba(0,200,255,0.12);
+            --magenta: #c840ff; --magenta-dim: rgba(200,64,255,0.12);
+            --yellow: #ffc840; --yellow-dim: rgba(255,200,64,0.15);
+            --red: #ff4060; --red-dim: rgba(255,64,96,0.12); --orange: #ff8040;
+            --text-primary: #e4e8f0; --text-secondary: #8e96a8; --text-muted: #4a5060; --text-dim: #2a3040;
+            --border-color: #1e2a3a; --radius-sm: 4px; --radius: 8px; --radius-lg: 12px;
+            --font-mono: 'JetBrains Mono', monospace; --font-display: 'Orbitron', sans-serif;
+            --transition: 0.25s cubic-bezier(0.4,0,0.2,1);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { font-size: 14px; scroll-behavior: smooth; -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
+        body {
+            font-family: var(--font-mono); background: var(--bg-primary); color: var(--text-primary);
+            min-height: 100vh; min-height: 100dvh;
+            overflow-x: hidden; line-height: 1.6;
+            -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+            touch-action: manipulation;
+        }
+
+        .scanlines { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9999; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px); }
+        .bg-grid { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; opacity: 0.02; background-image: linear-gradient(rgba(0,224,90,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(0,224,90,0.06) 1px, transparent 1px); background-size: 50px 50px; }
+        #particlesCanvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+
+        .app-wrapper { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+
+        .header { background: var(--bg-secondary); border-bottom: 1px solid var(--border-color); padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; position: sticky; top: 0; z-index: 200; flex-wrap: wrap; min-height: 48px; }
+        .header-left { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+        .status-indicator { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); animation: statusPulse 2s infinite; flex-shrink: 0; }
+        @keyframes statusPulse { 0%,100%{opacity:1;box-shadow:0 0 8px var(--green)} 50%{opacity:0.4;box-shadow:0 0 20px var(--green)} }
+        .logo-icon { font-size: 1.3rem; animation: logoFloat 3s ease-in-out infinite; flex-shrink: 0; }
+        @keyframes logoFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+        .clickable-logo { cursor: pointer; transition: var(--transition); font-family: var(--font-display); font-weight: 800; color: var(--green); text-shadow: 0 0 20px var(--green-glow); font-size: 1rem; letter-spacing: 2px; white-space: nowrap; }
+        .clickable-logo:hover { text-shadow: 0 0 30px var(--green-glow); }
+        .version-badge { font-size: 0.55rem; padding: 2px 6px; border: 1px solid var(--yellow); border-radius: 20px; color: var(--yellow); font-weight: 500; letter-spacing: 1px; white-space: nowrap; flex-shrink: 0; }
+
+        .main-nav { display: flex; gap: 4px; flex-wrap: wrap; }
+        .nav-link { padding: 6px 12px; color: var(--text-secondary); text-decoration: none; font-size: 0.75rem; letter-spacing: 1px; border-radius: var(--radius); transition: var(--transition); border: 1px solid transparent; white-space: nowrap; }
+        .nav-link:hover { color: var(--green); border-color: var(--border-color); background: var(--green-dim); }
+        .nav-link.active { color: var(--green); border-color: var(--green); background: var(--green-dim); box-shadow: 0 0 12px var(--green-dim); }
+
+        .header-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+        .agent-panel { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; flex-wrap: wrap; }
+        .agent-icon { font-size: 1rem; }
+        .agent-name { color: var(--cyan); font-weight: 600; transition: all 0.3s; padding: 2px 6px; border-radius: 4px; white-space: nowrap; max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+        .agent-name.status-premium { background: linear-gradient(90deg, #ffd700, #ff8c00, #ffd700, #ff8c00); background-size: 300% 100%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; animation: statusGlow1 2s linear infinite; font-weight: 800; border: 1px solid rgba(255,215,0,0.5); box-shadow: 0 0 10px rgba(255,215,0,0.3); }
+        .agent-name.status-elite { background: linear-gradient(90deg, #ff4060, #c840ff, #ff4060, #c840ff); background-size: 300% 100%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; animation: statusGlow2 2s linear infinite; font-weight: 800; border: 1px solid rgba(200,64,255,0.5); box-shadow: 0 0 10px rgba(200,64,255,0.3); }
+        .agent-name.status-legend { background: linear-gradient(90deg, #00e05a, #00c8ff, #ffc840, #00e05a); background-size: 300% 100%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; animation: statusGlow3 3s linear infinite; font-weight: 800; border: 1px solid rgba(0,224,90,0.5); box-shadow: 0 0 12px rgba(0,224,90,0.4); }
+        @keyframes statusGlow1 { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+        @keyframes statusGlow2 { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+        @keyframes statusGlow3 { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+
+        .separator { color: var(--text-dim); }
+        .balance-display { color: var(--yellow); font-weight: 700; font-size: 0.8rem; white-space: nowrap; }
+        .level-badge { color: var(--green); font-size: 0.7rem; white-space: nowrap; }
+        .hints-badge { color: var(--cyan); font-size: 0.7rem; white-space: nowrap; }
+        .btn-icon { background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-secondary); padding: 6px 10px; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.85rem; transition: var(--transition); flex-shrink: 0; }
+        .btn-icon:hover { border-color: var(--green); color: var(--green); box-shadow: 0 0 10px var(--green-dim); }
+        .btn-icon:active { transform: scale(0.95); }
+
+        .main-content { flex: 1; padding: 16px; padding-bottom: calc(16px + var(--safe-bottom)); }
+        .page { display: none; animation: pageEnter 0.3s ease; }
+        .page.active { display: block; }
+        @keyframes pageEnter { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 20px; border: 1px solid var(--border-color); border-radius: var(--radius); background: var(--bg-tertiary); color: var(--text-primary); font-family: var(--font-mono); font-size: 0.8rem; font-weight: 500; cursor: pointer; letter-spacing: 1px; text-transform: uppercase; transition: var(--transition); text-decoration: none; white-space: nowrap; position: relative; overflow: hidden; -webkit-tap-highlight-color: transparent; }
+        .btn::after { content: ''; position: absolute; top: 50%; left: 50%; width: 0; height: 0; border-radius: 50%; background: rgba(0,224,90,0.2); transform: translate(-50%, -50%); transition: width 0.5s, height 0.5s; }
+        .btn:active::after { width: 200px; height: 200px; }
+        .btn:hover { border-color: var(--green); color: var(--green); box-shadow: 0 0 20px var(--green-dim); }
+        .btn:active { transform: scale(0.97); }
+        .btn:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+        .btn-primary { border-color: var(--green); background: var(--green-dim); color: var(--green); }
+        .btn-primary:hover { background: rgba(0,224,90,0.2); }
+        .btn-success { border-color: var(--cyan); color: var(--cyan); }
+        .btn-success:hover { box-shadow: 0 0 20px var(--cyan-dim); }
+        .btn-danger { border-color: var(--red); color: var(--red); }
+        .btn-danger:hover { box-shadow: 0 0 20px var(--red-dim); background: var(--red-dim); }
+        .btn-block { width: 100%; display: flex; }
+        .btn-lg { padding: 12px 28px; font-size: 0.9rem; }
+        .btn-small { padding: 6px 14px; font-size: 0.7rem; }
+        .btn-back { padding: 6px 14px; font-size: 0.75rem; color: var(--text-secondary); }
+
+        .click-particle { position: fixed; pointer-events: none; z-index: 10000; border-radius: 50%; background: var(--green); animation: clickParticle 0.7s ease-out forwards; }
+        @keyframes clickParticle { 0% { transform: translate(-50%, -50%) scale(0); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; } }
+
+        .reg-container { display: flex; align-items: center; justify-content: center; min-height: calc(100vh - 140px); min-height: calc(100dvh - 140px); padding: 20px; }
+        .reg-card { background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 36px 28px; max-width: 480px; width: 100%; text-align: center; box-shadow: 0 0 50px rgba(0,0,0,0.4); }
+        .reg-logo { font-size: 3.5rem; margin-bottom: 10px; animation: float 3s ease-in-out infinite; }
+        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+        .reg-title { font-family: var(--font-display); font-size: 1.8rem; color: var(--green); text-shadow: 0 0 25px var(--green-glow); letter-spacing: 4px; margin-bottom: 4px; }
+        .reg-subtitle { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 20px; letter-spacing: 2px; }
+        .reg-description { color: var(--text-muted); font-size: 0.85rem; line-height: 1.7; margin-bottom: 24px; }
+        .reg-tabs { display: flex; gap: 6px; margin-bottom: 20px; }
+        .reg-tab { flex: 1; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius); background: var(--bg-card); color: var(--text-secondary); font-family: var(--font-mono); font-size: 0.75rem; cursor: pointer; letter-spacing: 1px; transition: var(--transition); }
+        .reg-tab:hover { border-color: var(--cyan); color: var(--cyan); }
+        .reg-tab.active { border-color: var(--green); background: var(--green-dim); color: var(--green); }
+        .reg-form { text-align: left; display: none; }
+        .reg-form.active { display: block; }
+        .reg-label { display: block; font-family: var(--font-display); font-size: 0.65rem; letter-spacing: 2px; color: var(--text-muted); margin-bottom: 10px; text-align: center; }
+        .reg-input { width: 100%; padding: 12px 16px; background: var(--bg-input); border: 2px solid var(--border-color); border-radius: var(--radius); color: var(--green); font-family: var(--font-mono); font-size: 1.1rem; text-align: center; letter-spacing: 1px; transition: var(--transition); margin-bottom: 8px; }
+        .reg-input:focus { outline: none; border-color: var(--green); box-shadow: 0 0 20px var(--green-dim); }
+        .reg-input::placeholder { color: var(--text-dim); font-size: 0.85rem; }
+        .preview-name { font-family: var(--font-display); font-size: 1.1rem; color: var(--green); text-shadow: 0 0 12px var(--green-glow); letter-spacing: 2px; margin-bottom: 8px; text-align: center; min-height: 24px; word-break: break-all; }
+        .reg-feedback { font-size: 0.75rem; min-height: 18px; margin-bottom: 8px; text-align: center; }
+        .reg-feedback.error { color: var(--red); } .reg-feedback.success { color: var(--green); }
+        .reg-hint { font-size: 0.7rem; color: var(--text-muted); margin-bottom: 20px; text-align: center; }
+        .reg-footer { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-color); font-size: 0.75rem; color: var(--text-muted); line-height: 1.7; }
+        .reg-footer a { color: var(--cyan); text-decoration: none; } .reg-footer a:hover { text-decoration: underline; }
+
+        .desktop-header { margin-bottom: 16px; }
+        .desktop-title { font-family: var(--font-display); font-size: 1.3rem; color: var(--green); letter-spacing: 2px; }
+        .desktop-actions { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .section-title { font-family: var(--font-display); font-size: 0.7rem; letter-spacing: 2px; color: var(--text-muted); margin-bottom: 14px; }
+        .messages-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+        .empty-state { grid-column: 1/-1; text-align: center; padding: 50px 20px; color: var(--text-muted); border: 1px dashed var(--border-color); border-radius: var(--radius); }
+        .empty-icon { font-size: 3rem; margin-bottom: 10px; } .empty-hint { font-size: 0.75rem; color: var(--text-dim); margin-top: 4px; }
+
+        .message-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 16px; cursor: pointer; transition: var(--transition); position: relative; -webkit-tap-highlight-color: transparent; }
+        .message-card:active { transform: scale(0.98); }
+        .message-card:hover { border-color: var(--green); box-shadow: 0 0 25px var(--green-dim); }
+        @media (hover: hover) { .message-card:hover { transform: translateY(-2px); } }
+        .msg-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 4px; }
+        .msg-cipher-badge { font-size: 0.6rem; padding: 2px 7px; border-radius: 3px; letter-spacing: 1px; font-weight: 600; white-space: nowrap; }
+        .msg-cipher-badge.caesar { background: var(--cyan-dim); color: var(--cyan); border: 1px solid var(--cyan); }
+        .msg-cipher-badge.atbash { background: var(--magenta-dim); color: var(--magenta); border: 1px solid var(--magenta); }
+        .msg-cipher-badge.morse { background: var(--yellow-dim); color: var(--yellow); border: 1px solid var(--yellow); }
+        .msg-difficulty { color: var(--orange); font-size: 0.65rem; }
+        .msg-preview { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-secondary); word-break: break-all; margin-bottom: 8px; opacity: 0.8; }
+        .msg-reward { color: var(--yellow); font-size: 0.75rem; font-weight: 600; }
+        .msg-status-tag { position: absolute; top: 10px; right: 10px; font-size: 0.55rem; padding: 2px 6px; border-radius: 10px; background: var(--green-dim); color: var(--green); border: 1px solid var(--green); }
+
+        .decrypt-container { max-width: 1000px; margin: 0 auto; }
+        .decrypt-topbar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+        .decrypt-title { font-family: var(--font-display); font-size: 1.1rem; color: var(--green); letter-spacing: 2px; }
+        .decrypt-workspace { display: flex; flex-direction: column; gap: 14px; }
+        .decrypt-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 16px; }
+        .decrypt-card.full-width { width: 100%; }
+        .card-label { font-family: var(--font-display); font-size: 0.6rem; letter-spacing: 2px; color: var(--text-muted); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border-color); }
+        .cipher-info-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+        .cipher-badge { padding: 4px 10px; border-radius: var(--radius-sm); font-size: 0.65rem; font-weight: 700; letter-spacing: 1px; background: var(--cyan-dim); border: 1px solid var(--cyan); color: var(--cyan); }
+        .difficulty-stars { color: var(--orange); font-size: 0.8rem; } .reward-tag { color: var(--yellow); font-weight: 600; font-size: 0.8rem; }
+        .code-display { font-family: var(--font-mono); padding: 14px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-sm); letter-spacing: 2px; line-height: 1.8; word-break: break-all; font-size: 0.95rem; overflow-x: auto; }
+        .code-display.encrypted { color: var(--red); } .code-display.decrypted { color: var(--green); }
+        .instruction-text { color: var(--text-muted); font-size: 0.75rem; margin-bottom: 10px; }
+        .decrypt-input { width: 100%; padding: 12px; background: var(--bg-input); border: 2px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-mono); font-size: 0.9rem; letter-spacing: 1px; resize: vertical; transition: var(--transition); margin-bottom: 10px; min-height: 80px; }
+        .decrypt-input:focus { outline: none; border-color: var(--green); box-shadow: 0 0 18px var(--green-dim); }
+        .decrypt-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .decrypt-feedback { margin-top: 10px; padding: 10px; border-radius: var(--radius-sm); font-size: 0.8rem; display: none; }
+        .decrypt-feedback.success { display: block; background: var(--green-dim); border: 1px solid var(--green); color: var(--green); }
+        .decrypt-feedback.error { display: block; background: var(--red-dim); border: 1px solid var(--red); color: var(--red); }
+        .decrypt-feedback.info { display: block; background: var(--cyan-dim); border: 1px solid var(--cyan); color: var(--cyan); }
+        .success-card { border-color: var(--green); box-shadow: 0 0 20px var(--green-dim); }
+
+        .alphabet-ruler { display: flex; flex-wrap: wrap; gap: 1px; font-family: var(--font-mono); font-size: 0.7rem; padding: 6px; background: var(--bg-input); border-radius: var(--radius-sm); max-height: 120px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .ruler-row { display: flex; width: 100%; }
+        .ruler-cell { min-width: 20px; text-align: center; padding: 2px 0; border-radius: 2px; font-size: 0.65rem; }
+        @media (min-width: 768px) { .ruler-cell { min-width: 24px; font-size: 0.7rem; } }
+        .ruler-cell.original { color: var(--text-dim); } .ruler-cell.shifted { color: var(--green); background: var(--green-dim); font-weight: 700; }
+        .morse-table { display: grid; grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); gap: 4px; font-size: 0.7rem; }
+        @media (min-width: 768px) { .morse-table { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); } }
+        .morse-item { padding: 4px 6px; background: var(--bg-input); border-radius: var(--radius-sm); display: flex; justify-content: space-between; }
+        .morse-char { color: var(--cyan); font-weight: 700; } .morse-code { color: var(--text-secondary); }
+
+        .shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; margin-top: 16px; }
+        .shop-item { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 16px; text-align: center; transition: var(--transition); }
+        .shop-item:hover { border-color: var(--green); box-shadow: 0 0 18px var(--green-dim); }
+        .shop-item.owned { border-color: var(--green); background: var(--green-dim); }
+        .shop-icon { font-size: 2rem; margin-bottom: 6px; }
+        .shop-name { font-family: var(--font-display); font-size: 0.9rem; color: var(--green); margin-bottom: 4px; letter-spacing: 1px; }
+        .shop-desc { font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 6px; line-height: 1.4; }
+        .shop-price { color: var(--yellow); font-weight: 700; font-size: 1rem; margin-bottom: 4px; }
+        .shop-owned { color: var(--text-muted); font-size: 0.7rem; margin-bottom: 4px; }
+        .shop-effect { font-size: 0.7rem; color: var(--cyan); margin-bottom: 10px; }
+
+        .stats-detailed { max-width: 600px; margin: 16px auto; }
+        .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); margin-bottom: 6px; transition: var(--transition); flex-wrap: wrap; gap: 8px; }
+        .stat-row:hover { border-color: var(--green); } .stat-row-label { color: var(--text-secondary); font-size: 0.8rem; } .stat-row-value { color: var(--green); font-weight: 700; font-size: 0.9rem; word-break: break-all; }
+        .xp-bar-container { margin-top: 16px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 14px 18px; }
+        .xp-bar-label { font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 8px; }
+        .xp-bar { height: 8px; background: var(--bg-input); border-radius: 4px; overflow: hidden; }
+        .xp-bar-fill { height: 100%; background: linear-gradient(90deg, var(--green), var(--cyan)); border-radius: 4px; transition: width 0.5s ease; }
+
+        .tutorials-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-top: 20px; }
+        .tutorial-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 20px; transition: var(--transition); }
+        .tutorial-card:hover { border-color: var(--green); box-shadow: 0 0 20px var(--green-dim); }
+        .tutorial-icon { font-size: 2rem; margin-bottom: 10px; } .tutorial-name { font-family: var(--font-display); font-size: 1rem; color: var(--green); margin-bottom: 6px; letter-spacing: 1px; }
+        .tutorial-desc { color: var(--text-secondary); font-size: 0.8rem; line-height: 1.6; margin-bottom: 10px; }
+        .tutorial-example { background: var(--bg-input); padding: 8px; border-radius: var(--radius-sm); font-size: 0.75rem; color: var(--text-muted); margin-bottom: 10px; overflow-x: auto; }
+        .tutorial-history { font-size: 0.7rem; color: var(--text-dim); font-style: italic; border-left: 2px solid var(--border-color); padding-left: 10px; }
+        .tutorial-steps { margin-top: 10px; color: var(--text-secondary); font-size: 0.75rem; line-height: 1.7; }
+
+        .footer { background: var(--bg-secondary); border-top: 1px solid var(--border-color); padding: 8px 16px; padding-bottom: calc(8px + var(--safe-bottom)); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 0.65rem; color: var(--text-muted); }
+        .footer-center { font-family: var(--font-display); color: var(--green); letter-spacing: 1px; font-size: 0.65rem; }
+        .footer-key { background: var(--bg-tertiary); padding: 1px 5px; border-radius: 3px; border: 1px solid var(--border-color); margin-right: 2px; font-weight: 600; color: var(--text-secondary); }
+        .footer-link { color: var(--text-secondary); text-decoration: none; transition: var(--transition); } .footer-link:hover { color: var(--green); } .footer-sep { color: var(--text-dim); margin: 0 6px; }
+
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; height: 100dvh; background: rgba(0,0,0,0.88); z-index: 1000; align-items: center; justify-content: center; padding: 16px; }
+        .modal-overlay.active { display: flex; animation: fadeIn 0.25s ease; }
+        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+        .modal { background: var(--bg-tertiary); border: 1px solid var(--green); border-radius: var(--radius-lg); padding: 24px; max-width: 500px; width: 100%; max-height: 80vh; max-height: 80dvh; overflow-y: auto; box-shadow: 0 0 50px var(--green-dim); position: relative; -webkit-overflow-scrolling: touch; }
+        .modal-close { position: absolute; top: 12px; right: 12px; font-size: 1.2rem; cursor: pointer; color: var(--text-muted); background: none; border: none; transition: var(--transition); width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+        .modal-close:hover { color: var(--red); background: var(--red-dim); }
+        .modal-title { font-family: var(--font-display); font-size: 1.1rem; color: var(--green); margin-bottom: 16px; letter-spacing: 2px; }
+        .modal-body { color: var(--text-secondary); line-height: 1.7; font-size: 0.85rem; } .modal-body ol, .modal-body ul { padding-left: 18px; margin: 6px 0; } .modal-body li { margin-bottom: 4px; }
+        .modal-body .link { color: var(--cyan); text-decoration: none; } .modal-body .link:hover { text-decoration: underline; }
+        .modal-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+        .toast-container { position: fixed; top: 16px; right: 16px; z-index: 3000; display: flex; flex-direction: column; gap: 6px; max-width: 320px; pointer-events: none; }
+        .toast { background: var(--bg-tertiary); border: 1px solid var(--border-color); border-left: 4px solid var(--green); padding: 12px 16px; border-radius: var(--radius); font-size: 0.8rem; animation: toastIn 0.3s ease; box-shadow: 0 6px 25px rgba(0,0,0,0.5); pointer-events: all; }
+        .toast.success { border-left-color: var(--green); } .toast.error { border-left-color: var(--red); } .toast.warning { border-left-color: var(--yellow); } .toast.info { border-left-color: var(--cyan); }
+        @keyframes toastIn { from{opacity:0;transform:translateX(50px)} to{opacity:1;transform:translateX(0)} }
+
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            html { font-size: 13px; }
+            .header { padding: 8px 12px; gap: 8px; }
+            .main-nav { order: 10; width: 100%; justify-content: center; gap: 2px; }
+            .nav-link { padding: 5px 10px; font-size: 0.7rem; }
+            .header-right { flex-shrink: 1; }
+            .agent-panel { gap: 4px; font-size: 0.7rem; }
+            .agent-name { max-width: 80px; }
+            .messages-grid { grid-template-columns: 1fr; }
+            .tutorials-grid { grid-template-columns: 1fr; }
+            .shop-grid { grid-template-columns: 1fr; }
+            .reg-card { padding: 24px 16px; }
+            .desktop-title { font-size: 1.2rem; }
+            .footer { flex-direction: column; text-align: center; }
+            .btn { padding: 9px 16px; font-size: 0.75rem; }
+            .btn-lg { padding: 11px 24px; }
+            .toast-container { left: 16px; right: 16px; max-width: none; }
+            .toast { font-size: 0.75rem; padding: 10px 14px; }
+        }
+
+        @media (max-width: 380px) {
+            html { font-size: 12px; }
+            .header { padding: 6px 8px; }
+            .agent-name { max-width: 60px; }
+            .btn { padding: 8px 14px; font-size: 0.7rem; letter-spacing: 0.5px; }
+        }
+
+        @media (min-width: 1200px) {
+            html { font-size: 15px; }
+            .messages-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+        }
+
+        /* Скроллбар */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: var(--bg-primary); }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--green-dim); }
+        ::selection { background: var(--green-dim); color: var(--green); }
+
+        /* Улучшения для мобильных */
+        @media (pointer: coarse) {
+            .btn, .btn-icon, .message-card, .nav-link, .reg-tab, .shop-item, .tutorial-card {
+                cursor: default;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="scanlines"></div>
+    <div class="bg-grid"></div>
+    <canvas id="particlesCanvas"></canvas>
+
+    <div class="app-wrapper">
+        <header class="header">
+            <div class="header-left">
+                <div class="status-indicator"></div>
+                <span class="logo-icon">🔐</span>
+                <span class="logo-text clickable-logo" id="logoHome" title="На главную">CipherLab</span>
+                <span class="version-badge">v1.0 DEMO</span>
+            </div>
+            <nav class="main-nav" id="mainNav" style="display:none;">
+                <a href="#" class="nav-link active" data-page="desktop">📡 Перехват</a>
+                <a href="#" class="nav-link" data-page="tutorials">📚 Учебник</a>
+                <a href="#" class="nav-link" data-page="shop">🛒 Магазин</a>
+                <a href="#" class="nav-link" data-page="stats">📊 Статистика</a>
+            </nav>
+            <div class="header-right">
+                <div class="agent-panel" id="agentPanel" style="display:none;">
+                    <span class="agent-icon">🕵️</span>
+                    <span class="agent-name" id="headerAgentName">---</span>
+                    <span class="separator">|</span>
+                    <span class="balance-display" id="headerBalance">₿0</span>
+                    <span class="separator">|</span>
+                    <span class="level-badge" id="headerLevel">Ур.1</span>
+                    <span class="separator">|</span>
+                    <span class="hints-badge" id="headerHints">💡0</span>
+                    <button class="btn-icon" id="btnLogout" title="Выйти">🚪</button>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <section class="page active" id="pageRegistration">
+                <div class="reg-container"><div class="reg-card">
+                    <div class="reg-logo">🔐</div><h1 class="reg-title">CipherLab</h1><p class="reg-subtitle">Лаборатория Шифрования</p><p class="reg-description">Обучающая игра по криптографии. Расшифровывайте сообщения, зарабатывайте монеты.</p>
+                    <div class="reg-tabs"><button class="reg-tab active" data-tab="register">🔓 РЕГИСТРАЦИЯ</button><button class="reg-tab" data-tab="login">🔑 ВОЙТИ</button></div>
+                    <div class="reg-form active" id="formRegister"><label class="reg-label">ПРИДУМАЙТЕ КОДОВОЕ ИМЯ</label><input type="text" class="reg-input" id="regCodename" placeholder="Shadow_Hawk" maxlength="30" autocomplete="off" autocapitalize="characters"><div class="preview-name" id="previewName">[ВВЕДИТЕ_ИМЯ]</div><div class="reg-feedback" id="regFeedback"></div><p class="reg-hint">Формат: Префикс_Суффикс. Буквы, цифры и подчёркивание.</p><button class="btn btn-primary btn-block" id="btnRegister" disabled>🔓 ЗАРЕГИСТРИРОВАТЬСЯ</button></div>
+                    <div class="reg-form" id="formLogin" style="display:none;"><label class="reg-label">ВВЕДИТЕ КОДОВОЕ ИМЯ ДЛЯ ВХОДА</label><input type="text" class="reg-input" id="loginCodename" placeholder="Ваше кодовое имя" maxlength="30" autocomplete="off" autocapitalize="characters"><div class="reg-feedback" id="loginFeedback"></div><p class="reg-hint">Введите существующее кодовое имя агента.</p><button class="btn btn-primary btn-block" id="btnLogin" disabled>🔑 ВОЙТИ</button></div>
+                    <div class="reg-footer"><p>⚠️ Демо-версия. Полная версия — позже.</p><p>Следите за новостями: <a href="https://vk.com/kuryshevadiana" target="_blank" style="color:var(--cyan);">vk.com/kuryshevadiana</a></p></div>
+                </div></div>
+            </section>
+
+            <section class="page" id="pageDesktop"><div class="desktop-container"><div class="desktop-header"><h2 class="desktop-title">📡 ЦЕНТР ПЕРЕХВАТА</h2></div><div class="desktop-actions"><button class="btn btn-primary btn-lg" id="btnScanEther">⚡ СКАНИРОВАТЬ ЭФИР</button></div><div class="messages-section"><h3 class="section-title">ПЕРЕХВАЧЕННЫЕ СООБЩЕНИЯ</h3><div class="messages-grid" id="messagesGrid"><div class="empty-state"><div class="empty-icon">📭</div><p>Нет перехваченных сообщений</p><p class="empty-hint">Нажмите «СКАНИРОВАТЬ ЭФИР»</p></div></div></div></div></section>
+
+            <section class="page" id="pageDecrypt"><div class="decrypt-container"><div class="decrypt-topbar"><button class="btn btn-back" id="btnBackToDesktop">◄ НАЗАД</button><h2 class="decrypt-title">🔐 ТЕРМИНАЛ ДЕШИФРОВКИ</h2><span style="color:var(--text-muted);font-size:0.75rem;">Подсказок: <b style="color:var(--yellow);" id="decryptHintsCount">0</b></span></div><div class="decrypt-workspace"><div class="decrypt-card full-width"><div class="card-label">ЗАШИФРОВАННОЕ СООБЩЕНИЕ</div><div class="cipher-info-row"><span class="cipher-badge" id="cipherTypeBadge">ШИФР ЦЕЗАРЯ</span><span class="difficulty-stars" id="difficultyStars">★</span><span class="reward-tag" id="rewardTag">₿50</span></div><div class="code-display encrypted" id="encryptedDisplay"></div></div><div class="decrypt-card" id="toolsCard"><div class="card-label">ИНСТРУМЕНТЫ ДЕШИФРОВКИ</div><div id="cipherTools"></div></div><div class="decrypt-card"><div class="card-label">ВАША РАСШИФРОВКА</div><p class="instruction-text">Введите расшифрованный текст. Нажмите Enter для проверки.</p><textarea class="decrypt-input" id="decryptInput" placeholder="Введите текст здесь..." rows="4" autocapitalize="characters"></textarea><div class="decrypt-actions"><button class="btn btn-primary" id="btnCheckDecrypt">✅ ПРОВЕРИТЬ (Enter)</button><button class="btn" id="btnShowHint">💡 ПОДСКАЗКА</button></div><div class="decrypt-feedback" id="decryptFeedback"></div></div><div class="decrypt-card success-card" id="successCard" style="display:none;"><div class="card-label">✅ РАСШИФРОВАНО УСПЕШНО</div><div class="code-display decrypted" id="decryptedDisplay"></div><div class="decrypt-actions" style="margin-top:10px;"><button class="btn btn-success" id="btnSellMessage">💰 ПРОДАТЬ (₿<span id="sellReward">0</span>)</button></div></div></div></div></section>
+
+            <section class="page" id="pageTutorials"><div class="tutorials-container"><h2 class="page-title" style="font-family:var(--font-display);font-size:1.3rem;color:var(--green);letter-spacing:2px;">📚 УЧЕБНИК ШИФРОВ</h2><p style="color:var(--text-muted);margin-bottom:16px;">Изучите принципы работы исторических шифров</p><div class="tutorials-grid" id="tutorialsGrid"></div></div></section>
+
+            <section class="page" id="pageShop"><div class="shop-container"><h2 class="page-title" style="font-family:var(--font-display);font-size:1.3rem;color:var(--green);letter-spacing:2px;">🛒 МАГАЗИН</h2><p style="text-align:center;color:var(--text-muted);margin-bottom:16px;">Баланс: <span style="color:var(--yellow);font-weight:700;font-size:1.1rem;" id="shopBalance">₿0</span></p><div class="shop-grid" id="shopGrid"></div></div></section>
+
+            <section class="page" id="pageStats"><div class="stats-container"><h2 class="page-title" style="font-family:var(--font-display);font-size:1.3rem;color:var(--green);letter-spacing:2px;">📊 СТАТИСТИКА АГЕНТА</h2><div class="stats-detailed" id="statsDetailed"></div></div></section>
+        </main>
+
+        <footer class="footer">
+            <div class="footer-left"><span class="footer-key">1-4</span> Вкладки <span class="footer-key">H</span> Помощь <span class="footer-key">Enter</span> Проверить</div>
+            <div class="footer-center">CipherLab v1.0 DEMO © 2026</div>
+            <div class="footer-right"><a href="https://vk.com/kuryshevadiana" target="_blank" class="footer-link">👩‍💻 Разработчик</a><span class="footer-sep">|</span><a href="#" class="footer-link" id="footerCommunity">🌐 Сообщество</a></div>
+        </footer>
+    </div>
+
+    <div class="modal-overlay" id="modalHelp"><div class="modal"><button class="modal-close" data-close="modalHelp">✕</button><h3 class="modal-title">❓ ПОМОЩЬ</h3><div class="modal-body"><p><b>CipherLab</b> — обучающая игра по криптографии.</p><br><p><b>Как играть:</b></p><ol><li>Зарегистрируйтесь или войдите</li><li>Сканируйте эфир</li><li>Расшифруйте текст</li><li>Нажмите Enter для проверки</li><li>Продайте данные</li></ol><br><p><b>Горячие клавиши:</b></p><p><span class="footer-key">1-4</span> Вкладки | <span class="footer-key">Enter</span> Проверить | <span class="footer-key">H</span> Помощь | <span class="footer-key">ESC</span> Назад</p></div></div></div>
+    <div class="modal-overlay" id="modalDev"><div class="modal"><button class="modal-close" data-close="modalDev">✕</button><h3 class="modal-title">👩‍💻 РАЗРАБОТЧИК</h3><div class="modal-body"><p><b>CipherLab v1.0 DEMO</b></p><p>Обучающая игра по криптографии</p><br><p><b>Автор:</b> Диана Курышева</p><p><b>ВК:</b> <a href="https://vk.com/kuryshevadiana" target="_blank" class="link">vk.com/kuryshevadiana</a></p></div></div></div>
+    <div class="modal-overlay" id="modalCommunity"><div class="modal"><button class="modal-close" data-close="modalCommunity">✕</button><h3 class="modal-title">🌐 СООБЩЕСТВО</h3><div class="modal-body"><p>Сообщество CipherLab ВКонтакте скоро появится!</p><br><p>В сообществе: новости, анонсы, обсуждения.</p><br><p>Подпишитесь на разработчика:</p><p><a href="https://vk.com/kuryshevadiana" target="_blank" class="link">vk.com/kuryshevadiana</a></p></div></div></div>
+    <div class="modal-overlay" id="modalLogout"><div class="modal"><button class="modal-close" data-close="modalLogout">✕</button><h3 class="modal-title">🚪 ВЫХОД</h3><div class="modal-body"><p>Выйти из системы?</p><br><div class="modal-actions"><button class="btn btn-danger" id="btnConfirmLogout">ВЫЙТИ</button><button class="btn" data-close="modalLogout">ОТМЕНА</button></div></div></div></div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="js/messages.js"></script>
+    <script src="js/ciphers.js"></script>
+    <script src="js/state.js"></script>
+    <script src="js/shop.js"></script>
+    <script src="js/particles.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
